@@ -1,4 +1,5 @@
 bin/test_client
+bin/test_queue
 bin/unit_queue
 bin/unit_request
 lib/libsmq.a
