@@ -5,11 +5,16 @@
 #include <assert.h>
 #include <time.h>
 #include <unistd.h>
+#include <semaphore.h>
 
 /* Constants */
 
 const char * TOPIC     = "testing";
-const size_t NMESSAGES = 10;
+const size_t NMESSAGES = 1<<4;
+
+/* Globals */
+
+sem_t Shutdown;
 
 /* Threads */
 
@@ -18,15 +23,18 @@ void *incoming_thread(void *arg) {
     size_t messages = 0;
 
     while (smq_running(smq)) {
-    	char *message = smq_retrieve(smq);
-	if (message) {
-	    assert(strstr(message, "Hello from"));
-	    free(message);
-	    messages++;
-	}
+        char *message = smq_retrieve(smq);
+        if (message) {
+            assert(strstr(message, "Hello from"));
+            free(message);
+            messages++;
+        }
+
+        if (messages == NMESSAGES) {
+            sem_post(&Shutdown);
+        }
     }
 
-    assert(messages == NMESSAGES);
     return NULL;
 }
 
@@ -35,11 +43,15 @@ void *outgoing_thread(void *arg) {
     char body[BUFSIZ];
 
     for (size_t i = 0; i < NMESSAGES; i++) {
-    	sprintf(body, "%lu. Hello from %lu\n", i, time(NULL));
-    	smq_publish(smq, TOPIC, body);
+        sprintf(body, "%lu. Hello from %lu\n", i, time(NULL));
+        smq_publish(smq, TOPIC, body);
+
+        if (i % 4 == 0) {
+            sleep(1);
+        }
     }
 
-    sleep(4);
+    sem_wait(&Shutdown);
     smq_shutdown(smq);
     return NULL;
 }
@@ -55,6 +67,9 @@ int main(int argc, char *argv[]) {
     if (argc > 1) { host = argv[1]; }
     if (argc > 2) { port = argv[2]; }
     if (!name)    { name = "test_client";  }
+
+    /* Initialize semaphore */
+    sem_init(&Shutdown, 0, 0);
 
     /* Create and start message queue */
     SMQ *smq = smq_create(name, host, port);
@@ -77,4 +92,4 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-/* vim: set expandtab sts=4 sw=4 ts=8 ft=c: */ 
+/* vim: set expandtab sts=4 sw=4 ts=8 ft=c: */
