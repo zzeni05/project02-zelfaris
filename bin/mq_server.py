@@ -34,8 +34,8 @@ class BaseHandler(tornado.web.RequestHandler):
             self.write(str(kwargs['exc_info'][1]) + '\n')
 
     def write_response(self, message):
-        self.application.logger.info(message.rstrip())
         self.write(message)
+        self.application.logger.info(message.rstrip())
 
 # Topic Handler
 
