@@ -17,7 +17,7 @@ struct Request {
 /* Functions */
 
 Request *   request_create(const char *method, const char *url, const char *body);
-void	    request_delete(Request *r);
+void        request_delete(Request *r);
 
 char *      request_perform(Request *r, long timeout);
 

@@ -22,12 +22,12 @@ struct Queue {
 
 /* Functions */
 
-Queue *	    queue_create();
+Queue *     queue_create();
 void        queue_delete(Queue *q);
 
 void        queue_shutdown(Queue *q);
 
-void	    queue_push(Queue *q, Request *r);
+void        queue_push(Queue *q, Request *r);
 Request *   queue_pop(Queue *q, time_t timeout);
 
 #endif
