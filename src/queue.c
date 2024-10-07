@@ -34,7 +34,7 @@ void queue_push(Queue *q, Request *r) {
 }
 
 /**
- * Pop message to the front of queue (block until there is something to return).
+ * Pop message from the front of queue (block until there is something to return).
  * @param   q       Queue structure.
  * @param   timeout How long to wait before re-checking condition (ms).
  * @return  Request structure.
