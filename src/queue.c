@@ -7,15 +7,36 @@
  * Create queue structure.
  * @return  Newly allocated queue structure.
  **/
-Queue * queue_create() {
+Queue * queue_create(int sentinel, size_t capacity) {
+    Queue *q = calloc(1, sizeof(Queue));
+
+    if (q) {
+        q->data = calloc(capacity, sizeof(int));
+        q->sentinel = sentinel;
+        q->capacity = capacity;
+
+        // Initialize our mutex
+        sem_init(&q->lock, 0, 1);
+
+        // Initialize the condition variables
+        sem_init(&q->produced, 0, 0);
+        sem_init(&q->consumed, 0, q->capacity);
+    }
+
     return NULL;
 }
+
 
 /**
  * Delete queue structure.
  * @param   q       Queue structure.
  **/
 void queue_delete(Queue *q) {
+    if (q) {
+        free(q->data);
+    	free(q);
+    }
+
 }
 
 /**
