@@ -7,6 +7,7 @@
 #include "smq/thread.h"
 
 #include <stdbool.h>
+#include <semaphore.h>
 
 /* Structures */
 
@@ -18,6 +19,15 @@ struct Queue {
     bool     running;   // Whether or not the queue is running (active).
 
     // TODO: Add any necessary thread and synchromization primitives.
+
+    int *data;
+    int sentinel;
+    size_t capacity;
+
+    sem_t lock;
+    sem_t consumed;
+    sem_t produced;
+
 };
 
 /* Functions */
