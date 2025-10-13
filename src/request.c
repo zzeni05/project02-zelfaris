@@ -56,7 +56,7 @@ size_t  request_writer(char *ptr, size_t size, size_t nmemb, void *userdata) {
  * @param   userdata    Pointer to user-provided Payload structure.
  **/
 size_t request_reader(char *ptr, size_t size, size_t nmemb, void *userdata) {
-    Payload *payload = userdata;                 // userdata was &Payload
+    Payload *payload = userdata;
     size_t capacity = size * nmemb;
 
     if (!payload || !payload->data) return 0;
@@ -68,7 +68,7 @@ size_t request_reader(char *ptr, size_t size, size_t nmemb, void *userdata) {
     } else {
         remaining = 0;
     }
-    if (remaining == 0) return 0;               // EOF
+    if (remaining == 0) return 0;
 
     size_t num_bytes = remaining;
     if (num_bytes > capacity) {
@@ -78,10 +78,8 @@ size_t request_reader(char *ptr, size_t size, size_t nmemb, void *userdata) {
     memcpy(ptr, payload->data + payload->offset, num_bytes);
     payload->offset += num_bytes;
 
-    return num_bytes;                            // bytes provided to libcurl
+    return num_bytes;
 }
-
-
 
 /* Functions */
 
