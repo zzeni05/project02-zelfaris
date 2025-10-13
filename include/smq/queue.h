@@ -21,9 +21,10 @@ struct Queue {
 
     // TODO: Add any necessary thread and synchromization primitives.
 
-    Request **data;     // was: int *data
-    Request  *sentinel; // was: int sentinel
+    Request **data;
+    Request  *sentinel;
     size_t    capacity;
+    size
 
     sem_t lock;
     sem_t consumed;
@@ -32,7 +33,7 @@ struct Queue {
 
 /* Functions */
 
-Queue *     queue_create(Request *sentinel, size_t capacity); // was: queue_create()
+Queue *     queue_create(Request *sentinel, size_t capacity);
 void        queue_delete(Queue *q);
 
 void        queue_shutdown(Queue *q);
