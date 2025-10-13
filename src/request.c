@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <curl/curl.h>
 
@@ -95,9 +96,9 @@ Request * request_create(const char *method, const char *url, const char *body) 
     Request *r = calloc(1, sizeof(*r));
 
     if (r) {
-        r->method = strdup(method);
-        r->url = strdup(url);
-        r->body = strdup(body);
+        if (method) r->method = strdup(method);
+        if (url)    r->url    = strdup(url);
+        if (body)   r->body   = strdup(body);
     }
 
     return r;
@@ -140,6 +141,8 @@ char * request_perform(Request *r, long timeout) {
         return NULL;
     }
 
+    Response response = (Response){0};
+
     curl_easy_setopt(curl, CURLOPT_URL, r->url);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, request_writer);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
@@ -152,8 +155,9 @@ char * request_perform(Request *r, long timeout) {
     } else if (strcmp(r->method, "PUT") == 0) {
         Payload payload;
         payload.data = NULL;
-        payload.offest = 0;
+        payload.offset = 0;
 
+        size_t payloadDataLength;
         if (r->body) {
             payload.data = r->body;
             payloadDataLength = strlen(r->body);
@@ -163,6 +167,8 @@ char * request_perform(Request *r, long timeout) {
         }
 
         payload.offset = 0;
+
+        size_t body_len = payloadDataLength;
 
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
         curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
@@ -178,10 +184,10 @@ char * request_perform(Request *r, long timeout) {
         return NULL;
     }
 
-    result = curl_easy_perform(curl);
+    CURLcode result = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
 
-    if (result !+ CURLE_OK) {
+    if (result != CURLE_OK) {
         free(response.data);
         return NULL;
     }
