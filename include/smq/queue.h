@@ -14,26 +14,19 @@
 
 typedef struct Queue Queue;
 struct Queue {
-    Request *head;      // First request in the queue.
-    Request *tail;      // Last request in the queue.
-    size_t   size;      // Total number of requests in the queue.
-    bool     running;   // Whether or not the queue is running (active).
+    Request *head;
+    Request *tail;
+    size_t   size;
+    bool     running;
 
-    // TODO: Add any necessary thread and synchromization primitives.
-
-    Request **data;
-    Request  *sentinel;
-    size_t    capacity;
-    size
-
-    sem_t lock;
-    sem_t consumed;
-    sem_t produced;
+    sem_t    lock;
+    sem_t    consumed;
+    sem_t    produced;
 };
 
 /* Functions */
 
-Queue *     queue_create(Request *sentinel, size_t capacity);
+Queue *     queue_create();
 void        queue_delete(Queue *q);
 
 void        queue_shutdown(Queue *q);
