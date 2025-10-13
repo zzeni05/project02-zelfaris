@@ -147,10 +147,11 @@ char * request_perform(Request *r, long timeout) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, request_writer);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeout);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, timeout);
 
 
     if (strcmp(r->method, "GET") == 0) {
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+        // do nothing
 
     } else if (strcmp(r->method, "PUT") == 0) {
         Payload payload;
