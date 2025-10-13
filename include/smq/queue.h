@@ -8,6 +8,7 @@
 
 #include <stdbool.h>
 #include <semaphore.h>
+#include <time.h>
 
 /* Structures */
 
@@ -20,19 +21,18 @@ struct Queue {
 
     // TODO: Add any necessary thread and synchromization primitives.
 
-    int *data;
-    int sentinel;
-    size_t capacity;
+    Request **data;     // was: int *data
+    Request  *sentinel; // was: int sentinel
+    size_t    capacity;
 
     sem_t lock;
     sem_t consumed;
     sem_t produced;
-
 };
 
 /* Functions */
 
-Queue *     queue_create();
+Queue *     queue_create(Request *sentinel, size_t capacity); // was: queue_create()
 void        queue_delete(Queue *q);
 
 void        queue_shutdown(Queue *q);
