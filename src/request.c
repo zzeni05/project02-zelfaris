@@ -31,15 +31,19 @@ typedef struct {
  * @param   userdata    Pointer to user-provided Response structure.
  **/
 size_t  request_writer(char *ptr, size_t size, size_t nmemb, void *userdata) {
-    char buffer[BUFSIZ];
-
-    if (fgets(ptr, buffer, userdata) != NULL) {
-        printf("Successfully copied ptr to userdata");
-    } else {
-        printf("Error reading input/buffer empty");
+    Response *response = userdata;
+    size_t capacity = nmemb * size;
+    char *data = realloc(response->data, response->size + capacity + 1);
+    if (!data) {
+        return 0;
     }
 
-    return 0;
+    memcpy(data + response->size, ptr, capacity);
+    response->size += capacity;
+    data[response->size]='\0';
+    response->data = data;
+
+    return capacity;
 }
 
 /**
@@ -50,17 +54,33 @@ size_t  request_writer(char *ptr, size_t size, size_t nmemb, void *userdata) {
  * @param   nmemb       Size of the data buffer.
  * @param   userdata    Pointer to user-provided Payload structure.
  **/
-size_t  request_reader(char *ptr, size_t size, size_t nmemb, void *userdata) {
-    char buffer[BUFSIZ];
+size_t request_reader(char *ptr, size_t size, size_t nmemb, void *userdata) {
+    Payload *payload = userdata;                 // userdata was &Payload
+    size_t capacity = size * nmemb;
 
-    if (fgets(userdata, buffer, ptr) != NULL) {
-        printf("Successfully copied ptr to userdata");
+    if (!payload || !payload->data) return 0;
+
+    size_t total = strlen(payload->data);
+    size_t remaining;
+    if (total > payload->offset) {
+        remaining = total - payload->offset;
     } else {
-        printf("Error reading input/buffer empty");
+        remaining = 0;
+    }
+    if (remaining == 0) return 0;               // EOF
+
+    size_t num_bytes = remaining;
+    if (num_bytes > capacity) {
+        num_bytes = capacity;
     }
 
-    return 0;
+    memcpy(ptr, payload->data + payload->offset, num_bytes);
+    payload->offset += num_bytes;
+
+    return num_bytes;                            // bytes provided to libcurl
 }
+
+
 
 /* Functions */
 
@@ -112,23 +132,61 @@ void request_delete(Request *r) {
  * @return  Body of HTTP response (NULL if error or timeout).
  **/
 char * request_perform(Request *r, long timeout) {
-    int WORKER_THREADS = 1;
 
     CURL *curl = curl_easy_init();
 
     if (!curl) {
         fprintf(stderr, "Initialization failed\n");
-        return 0;
+        return NULL;
     }
 
+    curl_easy_setopt(curl, CURLOPT_URL, r->url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, request_writer);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeout);
+
+
+    if (strcmp(r->method, "GET") == 0) {
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+
+    } else if (strcmp(r->method, "PUT") == 0) {
+        Payload payload;
+        payload.data = NULL;
+        payload.offest = 0;
+
+        if (r->body) {
+            payload.data = r->body;
+            payloadDataLength = strlen(r->body);
+        } else {
+            payload.data = "";
+            payloadDataLength = 0;
+        }
+
+        payload.offset = 0;
+
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+        curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+        curl_easy_setopt(curl, CURLOPT_READFUNCTION, request_reader);
+        curl_easy_setopt(curl, CURLOPT_READDATA, &payload);
+        curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)body_len);
+
+    } else if (strcmp(r->method, "DELETE") == 0) {
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+    } else {
+        curl_easy_cleanup(curl);
+        free(response.data);
+        return NULL;
+    }
+
+    result = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
 
-    curl_easy_setopt(curl, CURLOPT_URL);
-    
+    if (result !+ CURLE_OK) {
+        free(response.data);
+        return NULL;
+    }
 
-
-
-    return NULL;
+    return response.data;
 }
 
 /* vim: set expandtab sts=4 sw=4 ts=8 ft=c: */
