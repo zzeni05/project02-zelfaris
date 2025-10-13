@@ -31,6 +31,14 @@ typedef struct {
  * @param   userdata    Pointer to user-provided Response structure.
  **/
 size_t  request_writer(char *ptr, size_t size, size_t nmemb, void *userdata) {
+    char buffer[BUFSIZ];
+
+    if (fgets(ptr, buffer, userdata) != NULL) {
+        printf("Successfully copied ptr to userdata");
+    } else {
+        printf("Error reading input/buffer empty");
+    }
+
     return 0;
 }
 
@@ -43,6 +51,14 @@ size_t  request_writer(char *ptr, size_t size, size_t nmemb, void *userdata) {
  * @param   userdata    Pointer to user-provided Payload structure.
  **/
 size_t  request_reader(char *ptr, size_t size, size_t nmemb, void *userdata) {
+    char buffer[BUFSIZ];
+
+    if (fgets(userdata, buffer, ptr) != NULL) {
+        printf("Successfully copied ptr to userdata");
+    } else {
+        printf("Error reading input/buffer empty");
+    }
+
     return 0;
 }
 
@@ -56,7 +72,15 @@ size_t  request_reader(char *ptr, size_t size, size_t nmemb, void *userdata) {
  * @return  Newly allocated Request structure.
  **/
 Request * request_create(const char *method, const char *url, const char *body) {
-    return NULL;
+    Request *r = calloc(1, sizeof(*r));
+
+    if (r) {
+        r->method = strdup(method);
+        r->url = strdup(url);
+        r->body = strdup(body);
+    }
+
+    return r;
 }
 
 /**
@@ -64,6 +88,12 @@ Request * request_create(const char *method, const char *url, const char *body) 
  * @param   r           Request structure.
  **/
 void request_delete(Request *r) {
+    if (r) {
+        free(r->method);
+        free(r->url);
+        free(r->body);
+        free(r);
+    }
 }
 
 /**
@@ -82,6 +112,22 @@ void request_delete(Request *r) {
  * @return  Body of HTTP response (NULL if error or timeout).
  **/
 char * request_perform(Request *r, long timeout) {
+    int WORKER_THREADS = 1;
+
+    CURL *curl = curl_easy_init();
+
+    if (!curl) {
+        fprintf(stderr, "Initialization failed\n");
+        return 0;
+    }
+
+    curl_easy_cleanup(curl);
+
+    curl_easy_setopt(curl, CURLOPT_URL);
+    
+
+
+
     return NULL;
 }
 
