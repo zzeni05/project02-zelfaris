@@ -1,6 +1,8 @@
 /* client.c: Simple Request Queue Client */
 
 #include "smq/client.h"
+#include "smq/queue.h"
+#include "smq/thread.h"
 
 /* Internal Prototypes */
 
@@ -22,6 +24,36 @@ void * smq_puller(void *);
  * @return  Newly allocated Simple Request Queue structure.
  **/
 SMQ * smq_create(const char *name, const char *host, const char *port) {
+    SMQ *smq = calloc(1, sizeof(*smq));
+
+    if (smq) {
+        if (!name) name = "";
+        strncpy(smq->name, name, sizeof smq->name - 1);
+        smq->name[sizeof smq->name - 1] = '\0';
+
+        if (!host) host = "localhost";
+        if (!port) port = "9620";
+        snprintf(smq->server_url, sizeof smq->server_url, "http://%s:%s", host, port);
+
+        smq->timeout = 1000;
+        smq->running = true;
+
+        smq->outgoing = queue_create();
+        smq->incoming = queue_create();
+        if (!smq->outgoing || !smq->incoming) { 
+            free(smq); return NULL; 
+        }
+
+        Thread pusher;
+        Thread puller;
+
+        thread_create(&pusher, NULL, smq_pusher, smq);
+        thread_create(&puller, NULL, smq_puller, smq);
+        
+        return smq;
+
+    }
+
     return NULL;
 }
 
@@ -30,6 +62,8 @@ SMQ * smq_create(const char *name, const char *host, const char *port) {
  * @param   smq     Simple Request Queue structure.
  **/
 void smq_delete(SMQ *smq) {
+
+
 }
 
 /**
@@ -39,6 +73,8 @@ void smq_delete(SMQ *smq) {
  * @param   body    Request body to publish.
  **/
 void smq_publish(SMQ *smq, const char *topic, const char *body) {
+
+
 }
 
 /**
@@ -50,6 +86,8 @@ void smq_publish(SMQ *smq, const char *topic, const char *body) {
  * @return  Newly allocated message body (must be freed).
  **/
 char * smq_retrieve(SMQ *smq) {
+
+
     return NULL;
 }
 
@@ -59,6 +97,8 @@ char * smq_retrieve(SMQ *smq) {
  * @param   topic   Topic string to subscribe to.
  **/
 void smq_subscribe(SMQ *smq, const char *topic) {
+
+
 }
 
 /**
@@ -67,6 +107,8 @@ void smq_subscribe(SMQ *smq, const char *topic) {
  * @param   topic   Topic string to unsubscribe from.
  **/
 void smq_unsubscribe(SMQ *smq, const char *topic) {
+
+
 }
 
 /**
@@ -79,6 +121,8 @@ void smq_unsubscribe(SMQ *smq, const char *topic) {
  * @param   smq      Simple Request Queue structure.
  */
 void smq_shutdown(SMQ *smq) {
+
+
 }
 
 /**
@@ -86,6 +130,8 @@ void smq_shutdown(SMQ *smq) {
  * @param   smq     Simple Request Queue structure.
  **/
 bool smq_running(SMQ *smq) {
+
+
     return false;
 }
 
@@ -95,6 +141,8 @@ bool smq_running(SMQ *smq) {
  * Pusher thread takes messages from outgoing queue and sends them to server.
  **/
 void * smq_pusher(void *arg) {
+
+
     return NULL;
 }
 
@@ -103,6 +151,8 @@ void * smq_pusher(void *arg) {
  * incoming queue.
  **/
 void * smq_puller(void *arg) {
+
+
     return NULL;
 }
 
