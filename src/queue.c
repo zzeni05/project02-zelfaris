@@ -44,6 +44,9 @@ void queue_delete(Queue *q) {
  * @param   q       Queue structure.
  **/
 void queue_shutdown(Queue *q) {
+
+
+
 }
 
 /**
@@ -52,6 +55,16 @@ void queue_shutdown(Queue *q) {
  * @param   r       Request structure.
  **/
 void queue_push(Queue *q, Request *r) {
+    sem_wait(&q->consumed);
+    sem_wait(&q->lock);
+
+
+    q->data[q->writer] = value;
+    q->writer = (q->writer + 1) % q->capacity;
+    q->size++;
+
+    sem_post(&q->lock);
+    sem_post(&q->produced);
 }
 
 /**
@@ -61,7 +74,24 @@ void queue_push(Queue *q, Request *r) {
  * @return  Request structure.
  **/
 Request * queue_pop(Queue *q, time_t timeout) {
-    return NULL;
+
+    sem_wait(&q->produced);
+    sem_wait(&q->lock);
+    sleep(timeout);
+
+    int value = q->data[q->reader];
+    if (value != q->sentinel) {
+        q->reader = (q->reader + 1) % q->capacity;
+        q->size--;
+    }
+
+    sem_post(&q->lock);
+    if (value != q->sentinel) {
+        sem_post(&q->consumed);
+    } else {
+        sem_post(&q->produced);
+    }
+    return value;
 }
 
 /* vim: set expandtab sts=4 sw=4 ts=8 ft=c: */
