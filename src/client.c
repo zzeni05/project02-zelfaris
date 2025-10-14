@@ -4,6 +4,7 @@
 #include "smq/queue.h"
 #include "smq/thread.h"
 #include "smq/request.h"
+#include <stdio.h>
 
 /* Internal Prototypes */
 
@@ -36,7 +37,7 @@ SMQ * smq_create(const char *name, const char *host, const char *port) {
         if (!port) port = "9620";
         snprintf(smq->server_url, sizeof smq->server_url, "http://%s:%s", host, port);
 
-        smq->timeout = 1000;
+        smq->timeout = 3000;
         smq->running = true;
 
         smq->outgoing = queue_create();
@@ -45,11 +46,8 @@ SMQ * smq_create(const char *name, const char *host, const char *port) {
             free(smq); return NULL; 
         }
 
-        Thread pusher;
-        Thread puller;
-
-        thread_create(&pusher, NULL, smq_pusher, smq);
-        thread_create(&puller, NULL, smq_puller, smq);
+        thread_create(&smq->pusher, NULL, smq_pusher, smq);
+        thread_create(&smq->puller, NULL, smq_puller, smq);
 
         return smq;
 
@@ -80,10 +78,10 @@ void smq_delete(SMQ *smq) {
 void smq_publish(SMQ *smq, const char *topic, const char *body) {
     if (!smq || !topic || !smq->running) return;
 
-    const char method = "PUT";
-    Queue outgoing = smq->outgoing; 
+    const char *method = "PUT";
+    Queue *outgoing = smq->outgoing; 
 
-    char url[512];
+    char url[1024];
     snprintf(url, sizeof(url), "%s/topic/%s", smq->server_url, topic);
 
     if (!body) body = "";
@@ -134,7 +132,7 @@ void smq_subscribe(SMQ *smq, const char *topic) {
     const char *method = "PUT";
     Queue *outgoing = smq->outgoing;
 
-    char url[512];
+    char url[1024];
     snprintf(url, sizeof url, "%s/subscription/%s/%s", smq->server_url, smq->name, topic);
 
     Request *request = request_create(method, url, "");
@@ -157,7 +155,7 @@ void smq_unsubscribe(SMQ *smq, const char *topic) {
     const char *method = "DELETE";
     Queue *outgoing = smq->outgoing;
 
-    char url[512];
+    char url[1024];
     snprintf(url, sizeof url, "%s/subscription/%s/%s", smq->server_url, smq->name, topic);
 
     Request *request = request_create(method, url, "");
@@ -179,15 +177,15 @@ void smq_unsubscribe(SMQ *smq, const char *topic) {
 void smq_shutdown(SMQ *smq) {
     if (!smq) return;
 
+    smq->running = false;
+
     if (smq->outgoing) queue_shutdown(smq->outgoing);
     if (smq->incoming) queue_shutdown(smq->incoming);
 
-    smq->running = false;
-
     thread_join(smq->pusher, NULL);
     thread_join(smq->puller, NULL);
-
 }
+
 
 /**
  * Returns whether or not the Simple Request Queue is running.
@@ -211,7 +209,7 @@ bool smq_running(SMQ *smq) {
 void * smq_pusher(void *arg) {
     SMQ *smq = (SMQ *)arg;
 
-    if(smq_running(smq) == false) {
+    if(smq_running(smq)) {
         Queue *outgoing = smq->outgoing;
 
         while (smq_running(smq)) {
@@ -242,7 +240,7 @@ void * smq_puller(void *arg) {
     if (smq_running(smq)) {
         Queue *incoming = smq->incoming;
         const char *method = "GET";
-        char url[512];
+        char url[1024];
 
         while (smq_running(smq)) {
             snprintf(url, sizeof url, "%s/queue/%s", smq->server_url, smq->name);
