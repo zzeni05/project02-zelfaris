@@ -37,7 +37,7 @@ SMQ * smq_create(const char *name, const char *host, const char *port) {
         if (!port) port = "9620";
         snprintf(smq->server_url, sizeof smq->server_url, "http://%s:%s", host, port);
 
-        smq->timeout = 3000;
+        smq->timeout = 2000;
         smq->running = true;
 
         smq->outgoing = queue_create();
