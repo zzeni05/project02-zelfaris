@@ -147,10 +147,8 @@ char * request_perform(Request *r, long timeout) {
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeout);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, timeout);
 
-
     if (strcmp(r->method, "GET") == 0) {
         // do nothing
-
     } else if (strcmp(r->method, "PUT") == 0) {
         Payload payload;
         payload.data = NULL;
@@ -184,9 +182,20 @@ char * request_perform(Request *r, long timeout) {
     }
 
     CURLcode result = curl_easy_perform(curl);
+
+    long http_code = 0;
+    if (result == CURLE_OK) {
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    }
+
     curl_easy_cleanup(curl);
 
     if (result != CURLE_OK) {
+        free(response.data);
+        return NULL;
+    }
+
+    if (http_code != 200) {
         free(response.data);
         return NULL;
     }

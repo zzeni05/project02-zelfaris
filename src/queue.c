@@ -74,6 +74,7 @@ void queue_shutdown(Queue *q) {
     Request *cur = q->head;
     while (cur) {
         Request *next = cur->next;
+        request_delete(cur);
         cur = next;
     }
     q->head = q->tail = NULL;
