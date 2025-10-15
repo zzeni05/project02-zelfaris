@@ -1,15 +1,14 @@
 # Project 02: Simple Message Queue
 
-This is [Project 02] of [CSE.30341.FA25].
+This is [Project 02] of [CSE.30341.FA24].
 
 ## Students
 
-- Domer McDomerson (dmcdomer@nd.edu)
-- Belle Fleur (bfleur@nd.edu)
+- Zenidene El Farissi (zelfaris@nd.edu)
 
 ## Video
 
-[Reflection Video](...)
+[Reflection Video](https://www.youtube.com/watch?v=zXPjAKeR4Ro)
 
 ## Brainstorming
 
@@ -61,14 +60,23 @@ brainstorming questions **are not required**.
 
 ## Errata
 
-> Describe any known errors, bugs, or deviations from the requirements.
+> Occasional race condition when spamming inputs in as messages on separate terminals - breifly mentioned in video. 
 
 ## Acknowledgments
 
 > List anyone you collaborated with or received help from (including TAs, other
 students, and AI tools)
 
-[Project 02]: https://pnutz.h4x0r.space/courses/cse.30341.fa25/project02.html
-[CSE.30341.FA25]: https://pnutz.h4x0r.space/courses/cse.30341.fa25/
+For this project, I utilized Google Gemini & ChatGPT for debugging and conceptual clarification.
+
+Debugging: The AI was instrumental in helping diagnose and resolve several complex concurrency issues. This included identifying the root cause of deadlocks in the test_queue.c functional test under high load, as well as fixing subtle race conditions in the chat.c application related to thread-safe printing to the terminal. The process involved generating instrumented code with debug prints and analyzing the output to pinpoint the exact nature of the bugs.
+
+Conceptual Understanding: I consulted the AI to gain a deeper understanding of core concepts relevant to the project, such as the producer-consumer problem, the role of bounded buffers in providing backpressure, and the specific mechanisms of semaphores and mutexes in preventing deadlocks and race conditions.
+
+While the AI provided significant debugging assistance, the final implementation, testing, and overall understanding of the project's architecture and concurrency principles were my own.
+
+
+[Project 02]: https://www3.nd.edu/~pbui/teaching/cse.30341.fa24/project02.html
+[CSE.30341.FA24]: https://www3.nd.edu/~pbui/teaching/cse.30341.fa24/
 [libcurl]: https://curl.se/libcurl/c/
 [HTTP]: https://en.wikipedia.org/wiki/HTTP

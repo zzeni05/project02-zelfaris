@@ -7,17 +7,21 @@
 #include "smq/thread.h"
 
 #include <stdbool.h>
+#include <semaphore.h>
+#include <time.h>
 
 /* Structures */
 
 typedef struct Queue Queue;
 struct Queue {
-    Request *head;      // First request in the queue.
-    Request *tail;      // Last request in the queue.
-    size_t   size;      // Total number of requests in the queue.
-    bool     running;   // Whether or not the queue is running (active).
+    Request *head;
+    Request *tail;
+    size_t   size;
+    bool     running;
 
-    // TODO: Add any necessary thread and synchromization primitives.
+    sem_t    lock;
+    sem_t    consumed;
+    sem_t    produced;
 };
 
 /* Functions */

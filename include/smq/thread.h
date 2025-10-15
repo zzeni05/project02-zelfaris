@@ -32,6 +32,7 @@ typedef pthread_mutex_t             Mutex;
 #define mutex_init(l, a)            PTHREAD_CHECK(pthread_mutex_init(l, a))
 #define mutex_lock(l)               PTHREAD_CHECK(pthread_mutex_lock(l))
 #define mutex_unlock(l)             PTHREAD_CHECK(pthread_mutex_unlock(l))
+#define mutex_destroy(l)            PTHREAD_CHECK(pthread_mutex_destroy(l))
 
 /* Condition Variables */
 

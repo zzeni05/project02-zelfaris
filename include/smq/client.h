@@ -22,6 +22,10 @@ typedef struct {
     Queue*  incoming;           // Requests received from server
 
     // TODO: Add any necessary thread and synchromization primitives
+
+    Thread  pusher;
+    Thread  puller;
+
 } SMQ;
 
 SMQ *   smq_create(const char *name, const char *host, const char *port);
