@@ -50,7 +50,6 @@ SMQ * smq_create(const char *name, const char *host, const char *port) {
         thread_create(&smq->puller, NULL, smq_puller, smq);
 
         return smq;
-
     }
 
     return NULL;
@@ -68,7 +67,6 @@ void smq_delete(SMQ *smq) {
     free(smq);
 }
 
-
 /**
  * Publish one message to topic (by placing new Request in outgoing queue).
  * @param   smq     Simple Request Queue structure.
@@ -79,8 +77,6 @@ void smq_publish(SMQ *smq, const char *topic, const char *body) {
     if (!smq || !topic || !smq->running) return;
 
     const char *method = "PUT";
-    Queue *outgoing = smq->outgoing; 
-
     char url[1024];
     snprintf(url, sizeof(url), "%s/topic/%s", smq->server_url, topic);
 
@@ -89,8 +85,7 @@ void smq_publish(SMQ *smq, const char *topic, const char *body) {
     Request *request = request_create(method, url, body);
     if (!request) return;
 
-    queue_push(outgoing, request);
-
+    queue_push(smq->outgoing, request);
 }
 
 /**
@@ -104,7 +99,6 @@ void smq_publish(SMQ *smq, const char *topic, const char *body) {
 char * smq_retrieve(SMQ *smq) {
     if (!smq) return NULL;
     if (!smq->running) return NULL;
-
 
     Request *r = queue_pop(smq->incoming, smq->timeout);
     if (!r) return NULL;
@@ -125,45 +119,39 @@ char * smq_retrieve(SMQ *smq) {
  * @param   topic   Topic string to subscribe to.
  **/
 void smq_subscribe(SMQ *smq, const char *topic) {
-    if (!smq) return;
-    if (!topic) return;
-    if (!smq->running) return;
-
-    const char *method = "PUT";
-    Queue *outgoing = smq->outgoing;
+    if (!smq || !topic || !smq->running) return;
 
     char url[1024];
     snprintf(url, sizeof url, "%s/subscription/%s/%s", smq->server_url, smq->name, topic);
 
-    Request *request = request_create(method, url, "");
+    Request *request = request_create("PUT", url, "");
     if (!request) return;
 
-    queue_push(outgoing, request);
+    // Perform request directly and synchronously
+    char *response = request_perform(request, smq->timeout);
+    free(response);
+    request_delete(request);
 }
 
-
 /**
- * Unubscribe to specified topic.
+ * Unsubscribe to specified topic.
  * @param   smq     Simple Request Queue structure.
  * @param   topic   Topic string to unsubscribe from.
  **/
 void smq_unsubscribe(SMQ *smq, const char *topic) {
-    if (!smq) return;
-    if (!topic) return;
-    if (!smq->running) return;
-
-    const char *method = "DELETE";
-    Queue *outgoing = smq->outgoing;
+    if (!smq || !topic || !smq->running) return;
 
     char url[1024];
     snprintf(url, sizeof url, "%s/subscription/%s/%s", smq->server_url, smq->name, topic);
 
-    Request *request = request_create(method, url, "");
+    Request *request = request_create("DELETE", url, "");
     if (!request) return;
 
-    queue_push(outgoing, request);
+    // Perform request directly and synchronously
+    char *response = request_perform(request, smq->timeout);
+    free(response);
+    request_delete(request);
 }
-
 
 /**
  * Shutdown the Simple Request Queue by:
@@ -186,19 +174,12 @@ void smq_shutdown(SMQ *smq) {
     thread_join(smq->puller, NULL);
 }
 
-
 /**
  * Returns whether or not the Simple Request Queue is running.
  * @param   smq     Simple Request Queue structure.
  **/
 bool smq_running(SMQ *smq) {
-    if (!smq) return false;
-
-    if(smq->running) {
-        return true;
-    } else {
-        return false;
-    }
+    return smq && smq->running;
 }
 
 /* Internal Functions */
@@ -208,24 +189,20 @@ bool smq_running(SMQ *smq) {
  **/
 void * smq_pusher(void *arg) {
     SMQ *smq = (SMQ *)arg;
+    Queue *outgoing = smq->outgoing;
 
-    if(smq_running(smq)) {
-        Queue *outgoing = smq->outgoing;
+    while (smq_running(smq)) {
+        Request *request = queue_pop(outgoing, smq->timeout);
+        if (!request) continue;
 
-        while (smq_running(smq)) {
-            Request *request = queue_pop(outgoing, smq->timeout);
-            if (!request) continue;
-
-            char *response = request_perform(request, smq->timeout);
-            if (response) free(response);
-
-            request_delete(request);
+        char *response = request_perform(request, smq->timeout);
+        if (!response) {
+            fprintf(stderr, "ERROR: Failed to send request for URL: %s\n", request->url);
         }
+        free(response); // free(NULL) is safe.
 
-    } else {
-        printf("Server not running");
+        request_delete(request);
     }
-
 
     return NULL;
 }
@@ -235,33 +212,37 @@ void * smq_pusher(void *arg) {
  * incoming queue.
  **/
 void * smq_puller(void *arg) {
-   SMQ *smq = (SMQ *)arg;
+    SMQ *smq = (SMQ *)arg;
+    Queue *incoming = smq->incoming;
+    const char *method = "GET";
+    char url[1024];
 
-    if (smq_running(smq)) {
-        Queue *incoming = smq->incoming;
-        const char *method = "GET";
-        char url[1024];
+    while (smq_running(smq)) {
+        snprintf(url, sizeof url, "%s/queue/%s", smq->server_url, smq->name);
 
-        while (smq_running(smq)) {
-            snprintf(url, sizeof url, "%s/queue/%s", smq->server_url, smq->name);
+        Request *req = request_create(method, url, NULL);
+        if (!req) continue;
 
-            Request *req = request_create(method, url, NULL);
-            if (!req) continue;
-
-            char *body = request_perform(req, smq->timeout);
-            request_delete(req);
-            if (!body) continue;
-
-            Request *deliver = request_create("BODY", "", NULL);
-            if (!deliver) { free(body); continue; }
-            deliver->body = body;
-
-            queue_push(incoming, deliver);
+        char *body = request_perform(req, smq->timeout);
+        request_delete(req);
+        
+        if (!body) { // This will now only happen on a real error or shutdown
+            continue;
         }
-    } else {
-        printf("Server not running\n");
+
+        // Create a new request to hold the body and transfer ownership of the pointer
+        Request *deliver = calloc(1, sizeof(Request));
+        if (!deliver) { 
+            free(body); 
+            continue; 
+        }
+        deliver->body = body; // Take ownership of the allocated pointer
+
+        queue_push(incoming, deliver);
     }
 
     return NULL;
 }
+
 /* vim: set expandtab sts=4 sw=4 ts=8 ft=c: */
+

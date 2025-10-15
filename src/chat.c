@@ -21,6 +21,7 @@
 /* Globals */
 
 char INPUT_BUFFER[BUFSIZ] = "";
+Mutex STDOUT_LOCK; // Mutex to protect stdout
 
 /* Functions */
 
@@ -61,10 +62,13 @@ void *receiver_thread(void *arg) {
     while (smq_running(smq)) {
         char *message = smq_retrieve(smq);
         if (message) {
-            // Erase the current line, print the message, and then redraw the input prompt
+            mutex_lock(&STDOUT_LOCK);
+            // Erase the current line and print the received message
             printf("\r\033[K%s\n", message);
-            printf("\r> %s", INPUT_BUFFER);
+            // Redraw the input prompt with the current buffer
+            printf("> %s", INPUT_BUFFER);
             fflush(stdout);
+            mutex_unlock(&STDOUT_LOCK);
             free(message);
         }
     }
@@ -83,6 +87,9 @@ int main(int argc, char *argv[]) {
     if (argc > 2) { host = argv[2]; }
     if (argc > 3) { port = argv[3]; }
 
+    // Initialize stdout mutex
+    mutex_init(&STDOUT_LOCK, NULL);
+
     // Create and start message queue client
     SMQ *smq = smq_create(name, host, port);
     if (!smq) {
@@ -91,8 +98,13 @@ int main(int argc, char *argv[]) {
     }
     smq_subscribe(smq, TOPIC);
 
-    // Set terminal to raw mode
+    // Set terminal to raw mode and print initial prompt
     toggle_raw_mode();
+    mutex_lock(&STDOUT_LOCK);
+    printf("> ");
+    fflush(stdout);
+    mutex_unlock(&STDOUT_LOCK);
+
 
     // Start receiver thread
     Thread receiver;
@@ -102,7 +114,6 @@ int main(int argc, char *argv[]) {
     size_t input_index = 0;
     INPUT_BUFFER[0] = 0;
     
-    // Calculate the maximum safe length for the user's typed message
     size_t name_len = strlen(name);
     size_t prefix_len = name_len + 2; // for ": "
     size_t max_input_len = (BUFSIZ > prefix_len) ? (BUFSIZ - prefix_len - 1) : 0; // -1 for null terminator
@@ -111,43 +122,57 @@ int main(int argc, char *argv[]) {
         char input_char = 0;
         read(STDIN_FILENO, &input_char, 1);
 
+        mutex_lock(&STDOUT_LOCK);
+
         if (input_char == '\n') { // Process commands and messages
+            mutex_unlock(&STDOUT_LOCK); // Unlock before potentially blocking operations
+
             if (strcmp(INPUT_BUFFER, "/quit") == 0 || strcmp(INPUT_BUFFER, "/exit") == 0) {
                 smq_shutdown(smq);
                 break;
             }
 
-            char message_buffer[BUFSIZ] = {0}; // Zero-initialize buffer
-
-            // Construct the message piece-by-piece to satisfy the compiler's static analysis.
-            // This is guaranteed to be safe because of the max_input_len check below.
+            char message_buffer[BUFSIZ] = {0};
+            // Construct the message piece-by-piece to satisfy the compiler
             strncpy(message_buffer, name, BUFSIZ - 1);
             strncat(message_buffer, ": ", BUFSIZ - strlen(message_buffer) - 1);
             strncat(message_buffer, INPUT_BUFFER, BUFSIZ - strlen(message_buffer) - 1);
-            
+
             smq_publish(smq, TOPIC, message_buffer);
 
             input_index = 0;
             INPUT_BUFFER[0] = 0;
+            
+            mutex_lock(&STDOUT_LOCK); // Re-lock to print prompt
+            printf("\r\033[K> %s", INPUT_BUFFER);
+
         } else if (input_char == BACKSPACE && input_index) { // Handle backspace
             INPUT_BUFFER[--input_index] = 0;
+            printf("\r\033[K> %s", INPUT_BUFFER);
         } else if (!iscntrl(input_char) && input_index < max_input_len) { // Append character
             INPUT_BUFFER[input_index++] = input_char;
             INPUT_BUFFER[input_index]   = 0;
+            printf("\r\033[K> %s", INPUT_BUFFER);
         }
 
-        // Redraw the input line
-        printf("\r\033[K> %s", INPUT_BUFFER);
         fflush(stdout);
+        mutex_unlock(&STDOUT_LOCK);
     }
 
     // Cleanup
-    printf("\r\n");
     thread_join(receiver, NULL);
+    
+    // Toggle raw mode off before final prints
+    // Note: atexit() handles the final toggle, but we do it here for clean exit printing
+    toggle_raw_mode(); 
+    printf("\r\nDisconnected.\n");
+
     smq_delete(smq);
+    mutex_destroy(&STDOUT_LOCK);
 
     return EXIT_SUCCESS;
 }
 
 /* vim: set expandtab sts=4 sw=4 ts=8 ft=c: */
+
 
